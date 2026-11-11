@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel da ONG - Correio das Águas</title>
+    <!-- Carrega a biblioteca MQTT via WebSocket -->
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; color: #333; }
+        .container { max-width: 900px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        header { border-bottom: 2px solid #0056b3; padding-bottom: 10px; margin-bottom: 20px; }
+        h1 { color: #0056b3; margin: 0; }
+        .status-box { background: #e9ecef; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+        .status-indicador { font-weight: bold; color: #d9534f; }
+        .conectado { color: #5cb85c; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background-color: #f8f9fa; color: #333; }
+        .btn-acao { padding: 6px 12px; font-size: 14px; margin-right: 5px; border-radius: 4px; border: none; cursor: pointer; }
+        .btn-providenciar { background-color: #28a745; color: white; }
+        .btn-pendente { background-color: #ffc107; color: black; }
+        .status-badge { padding: 5px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; }
+        .status-pendente { background-color: #ffeeba; color: #856404; }
+        .status-embarcado { background-color: #d4edda; color: #155724; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Painel de Logística - ONG Parceira Fictícia</h1>
+        <p>Sincronização em tempo real via conexão do barco na cidade.</p>
+    </header>
+
+    <div class="status-box">
+        <div>
+            <strong>Status da Conexão com o Barco:</strong>
+            <span id="status-conexao" class="status-indicador">Conectando ao Broker...</span>
+        </div>
+    </div>
+
+    <h3>Fila de Solicitações Recebidas</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Código Privado</th>
+                <th>Categoria</th>
+                <th>Status Atual</th>
+                <th>Ação da ONG</th>
+            </tr>
+        </thead>
+        <tbody id="tabelaPedidos">
+            <!-- Linhas inseridas automaticamente -->
+        </tbody>
+    </table>
+</div>
+
+<script>
+    const broker = 'wss://broker.hivemq.com:8884/mqtt';
+    const topic = 'correio-das-aguas/barco/pedidos';
+
+    // Conecta ao servidor MQTT
+    const client = mqtt.connect(broker);
+
+    client.on('connect', () => {
+        const elem = document.getElementById('status-conexao');
+        elem.innerText = 'Online - Pronto para receber atualizações do barco';
+        elem.className = 'status-indicador conectado';
+        client.subscribe(topic);
+    });
+
+    client.on('message', (t, message) => {
+        const payload = message.toString();
+        console.log('Recebido via MQTT:', payload);
+        processarDadosAutomated(payload);
+    });
+
+    function processarDadosAutomated(input) {
+        if(!input.trim()) return;
+
+        const codigos = input.trim().split(" ");
+        const tbody = document.getElementById('tabelaPedidos');
+
+        codigos.forEach(codigo => {
+            if(codigo.trim() === "") return;
+
+            let categoria = "Desconhecida";
+            if(codigo.includes("AGUA")) categoria = "Água Potável";
+            else if(codigo.includes("ALIM")) categoria = "Alimentos Básicos";
+            else if(codigo.includes("ROUP")) categoria = "Roupas e Higiene";
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><strong>${codigo}</strong></td>
+                <td>${categoria}</td>
+                <td><span class="status-badge status-pendente">Aguardando Avaliação</span></td>
+                <td>
+                    <button class="btn-acao btn-providenciar" onclick="atualizarStatus(this, 'Embarcado para Retorno')">Providenciar e Embarcar</button>
+                    <button class="btn-acao btn-pendente" onclick="atualizarStatus(this, 'Mantido Pendente')">Sem Recurso (Pendente)</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function atualizarStatus(botao, novoStatus) {
+        const linha = botao.parentElement.parentElement;
+        const celulaStatus = linha.querySelector('td:nth-child(3)');
+        const acoes = linha.querySelector('td:nth-child(4)');
+
+        if(novoStatus === 'Embarcado para Retorno') {
+            celulaStatus.innerHTML = `<span class="status-badge status-embarcado">${novoStatus}</span>`;
+        } else {
+            celulaStatus.innerHTML = `<span class="status-badge status-pendente">${novoStatus}</span>`;
+        }
+        
+        acoes.innerHTML = "<small>Decisão registrada (Irá na viagem de volta).</small>";
+    }
+</script>
+
+</body>
+</html>
