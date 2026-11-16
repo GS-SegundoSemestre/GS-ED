@@ -63,7 +63,7 @@ Para ver a comunicação assíncrona acontecendo em tempo real:
 4. **Simule a Atracação do Barco:**
    * Clique no botão **Preto** (Barco).
    * Observe a mágica: os dados sairão do Terminal Comunitário, viajarão pela nuvem (MQTT) e aparecerão instantaneamente na tabela da página Web aberta no seu computador!
-
+   
 ---
 
 ## 👥 Equipe (Correio das Águas)
